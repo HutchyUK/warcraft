@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 export const CLASS_COLORS: Record<string, string> = {
   Warrior:      '#C69B3A',
   Paladin:      '#F48CBA',
@@ -19,6 +21,6 @@ export function getClassColor(className: string): string {
 }
 
 // Returns a Tailwind-compatible inline style string for class-colored borders
-export function classColorStyle(className: string): React.CSSProperties {
+export function classColorStyle(className: string): CSSProperties {
   return { borderColor: getClassColor(className) };
 }
