@@ -6,7 +6,7 @@ Everything you need to run The War Room on your machine.
 
 ## Prerequisites
 
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9)
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10)
 - [Node.js 20+](https://nodejs.org/) and npm
 - [Git](https://git-scm.com/)
 - A Blizzard account (for OAuth login + character import)
