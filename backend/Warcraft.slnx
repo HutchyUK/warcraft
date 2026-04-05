@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Warcraft.Api.Tests/Warcraft.Api.Tests.csproj" />
+  <Project Path="Warcraft.Api/Warcraft.Api.csproj" />
+</Solution>

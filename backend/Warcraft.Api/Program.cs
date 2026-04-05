@@ -152,3 +152,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+// Required for WebApplicationFactory<Program> in integration tests
+public partial class Program { }
