@@ -7,8 +7,13 @@ public static class ResetService
     /// the start of the current weekly reset period for this character's region.
     /// </summary>
     public static DateOnly GetCurrentWeekStart(string region)
+        => GetCurrentWeekStart(region, DateTime.UtcNow);
+
+    /// <summary>
+    /// Overload that accepts an explicit clock value — use in tests for deterministic results.
+    /// </summary>
+    public static DateOnly GetCurrentWeekStart(string region, DateTime now)
     {
-        var now = DateTime.UtcNow;
         var targetDay = region.ToUpperInvariant() == "EU"
             ? DayOfWeek.Wednesday
             : DayOfWeek.Tuesday;
