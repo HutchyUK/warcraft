@@ -27,8 +27,8 @@ cd frontend && npm run dev
 | Layer | Tech |
 |-------|------|
 | Frontend | Next.js 14 App Router, Tailwind CSS |
-| Backend | ASP.NET Core Web API, .NET 9 |
-| Database | PostgreSQL via EF Core 9 (Neon on free tier) |
+| Backend | ASP.NET Core Web API, .NET 10 |
+| Database | PostgreSQL via EF Core 10 (Neon on free tier) |
 | Auth | Blizzard OAuth via ASP.NET Core OAuth middleware |
 | Deploy | Vercel (frontend) + Railway (backend) |
 
