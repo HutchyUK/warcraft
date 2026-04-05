@@ -1,23 +1,20 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using Warcraft.Api.Data;
-using Warcraft.Api.Models;
 
 namespace Warcraft.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class AuthController : ControllerBase
+public class AuthController(IConfiguration config) : ControllerBase
 {
     [HttpGet("login")]
-    public IActionResult Login([FromQuery] string returnUrl = "/")
+    public IActionResult Login()
     {
+        var frontendUrl = config["FrontendUrl"] ?? "/";
         return Challenge(new AuthenticationProperties
         {
-            RedirectUri = returnUrl
+            RedirectUri = frontendUrl
         }, "Blizzard");
     }
 

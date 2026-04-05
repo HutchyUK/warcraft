@@ -11,6 +11,7 @@ using Warcraft.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
+var frontendUrl = config["FrontendUrl"] ?? "/";
 
 // Database
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -127,7 +128,7 @@ builder.Services.AddAuthentication(options =>
         OnRemoteFailure = context =>
         {
             context.HandleResponse();
-            context.Response.Redirect("/?error=auth_failed");
+            context.Response.Redirect($"{frontendUrl}?error=auth_failed");
             return Task.CompletedTask;
         }
     };
