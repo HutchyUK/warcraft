@@ -10,6 +10,9 @@ frontend/.next/
 frontend/.env.local
 frontend/.env*.local
 
+# Docker secrets
+.env.docker
+
 # Misc
 .DS_Store
 *.log

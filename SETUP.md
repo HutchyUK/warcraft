@@ -146,6 +146,33 @@ The app runs at `http://localhost:3000`.
 
 ---
 
+## Running with Docker
+
+If you have Docker installed you can run the full stack with a single command instead
+of the steps above. No .NET SDK or Node.js required on your machine.
+
+```bash
+# 1. Copy the example env file and fill in your credentials
+cp .env.docker.example .env.docker
+# Edit .env.docker with your Blizzard credentials and a Postgres password
+
+# 2. Build and start all three services (db + api + frontend)
+docker-compose --env-file .env.docker up --build
+
+# App will be available at http://localhost:3000
+```
+
+> **Note:** The Blizzard redirect URI registered in the developer portal must be
+> `http://localhost:8080/api/auth/callback` when using docker-compose locally.
+
+To stop:
+```bash
+docker-compose down
+# Add -v to also delete the postgres_data volume (removes all data)
+```
+
+---
+
 ## Environment variable reference
 
 ### Backend (`appsettings.Development.json` — gitignored)
