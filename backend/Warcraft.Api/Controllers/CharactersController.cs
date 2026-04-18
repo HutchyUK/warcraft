@@ -25,7 +25,7 @@ public class CharactersController(AppDbContext db, BlizzardApiService blizzard) 
             .ThenByDescending(c => c.Level)
             .Select(c => new CharacterSummaryDto(
                 c.Id, c.Name, c.Realm, c.Class, c.Level,
-                c.Role, c.IsMain, c.Region, c.AvatarUrl, c.Spec))
+                c.Role, c.IsMain, c.Region, c.AvatarUrl, c.Spec, c.ItemLevelAverage))
             .ToListAsync();
 
         return Ok(chars);
@@ -45,6 +45,7 @@ public class CharactersController(AppDbContext db, BlizzardApiService blizzard) 
             IsMain = dto.IsMain,
             Region = dto.Region.ToUpperInvariant(),
             Spec = dto.Spec,
+            ItemLevelAverage = dto.ItemLevelAverage,
         };
 
         db.Characters.Add(character);
@@ -53,7 +54,7 @@ public class CharactersController(AppDbContext db, BlizzardApiService blizzard) 
         return CreatedAtAction(nameof(GetAll), new CharacterSummaryDto(
             character.Id, character.Name, character.Realm, character.Class,
             character.Level, character.Role, character.IsMain, character.Region,
-            character.AvatarUrl, character.Spec));
+            character.AvatarUrl, character.Spec, character.ItemLevelAverage));
     }
 
     [HttpPost("import")]
@@ -63,7 +64,7 @@ public class CharactersController(AppDbContext db, BlizzardApiService blizzard) 
         if (string.IsNullOrEmpty(accessToken))
             return BadRequest(new { error = "No Blizzard access token in session" });
 
-        var result = await blizzard.GetClassicCharactersAsync(accessToken, region);
+        var result = await blizzard.GetRetailCharactersAsync(accessToken, region);
 
         if (result.ApiFailed)
             return Ok(new { imported = 0, apiFailed = true });
@@ -94,7 +95,6 @@ public class CharactersController(AppDbContext db, BlizzardApiService blizzard) 
             }
             else
             {
-                // Update level and class in case they changed
                 existing.Level = ch.Level;
                 existing.Class = ch.Class;
             }
@@ -109,7 +109,6 @@ public class CharactersController(AppDbContext db, BlizzardApiService blizzard) 
     {
         var character = await db.Characters
             .FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
-
         if (character == null) return NotFound();
 
         db.Characters.Remove(character);
@@ -122,7 +121,6 @@ public class CharactersController(AppDbContext db, BlizzardApiService blizzard) 
     {
         var character = await db.Characters
             .FirstOrDefaultAsync(c => c.Id == id && c.UserId == CurrentUserId);
-
         if (character == null) return NotFound();
 
         character.Name = dto.Name;
@@ -133,6 +131,7 @@ public class CharactersController(AppDbContext db, BlizzardApiService blizzard) 
         character.IsMain = dto.IsMain;
         character.Region = dto.Region.ToUpperInvariant();
         character.Spec = dto.Spec;
+        character.ItemLevelAverage = dto.ItemLevelAverage;
 
         await db.SaveChangesAsync();
         return NoContent();

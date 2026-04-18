@@ -1,8 +1,12 @@
+using System.Security.Claims;
+using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Testcontainers.PostgreSql;
 using Warcraft.Api.Data;
 
@@ -88,7 +92,38 @@ public class UnauthenticatedFactory : WebApplicationFactory<Program>, IAsyncLife
             services.Remove(descriptor);
             services.AddDbContext<AppDbContext>(opts =>
                 opts.UseNpgsql(_db.GetConnectionString()));
-            // No test auth handler — requests are unauthenticated
+
+            // Replace auth with a handler that always fails — [Authorize] returns 401, no redirect.
+            services.Configure<AuthenticationOptions>(opts =>
+            {
+                opts.DefaultAuthenticateScheme = DenyAllHandler.SchemeName;
+                opts.DefaultChallengeScheme = DenyAllHandler.SchemeName;
+            });
+            services.AddAuthentication(DenyAllHandler.SchemeName)
+                .AddScheme<AuthenticationSchemeOptions, DenyAllHandler>(
+                    DenyAllHandler.SchemeName, _ => { });
         });
+    }
+}
+
+/// <summary>
+/// Auth handler that always fails authentication and returns 401 on challenge.
+/// Used by UnauthenticatedFactory to test that [Authorize] endpoints reject anonymous requests.
+/// </summary>
+internal sealed class DenyAllHandler(
+    IOptionsMonitor<AuthenticationSchemeOptions> options,
+    ILoggerFactory logger,
+    UrlEncoder encoder)
+    : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    internal const string SchemeName = "DenyAll";
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        => Task.FromResult(AuthenticateResult.NoResult());
+
+    protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+    {
+        Response.StatusCode = 401;
+        return Task.CompletedTask;
     }
 }

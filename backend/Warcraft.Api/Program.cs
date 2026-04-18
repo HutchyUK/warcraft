@@ -20,6 +20,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // HTTP client factory (for BlizzardApiService)
 builder.Services.AddHttpClient();
 builder.Services.AddScoped<BlizzardApiService>();
+builder.Services.AddScoped<ContentSeeder>();
 
 // CORS — allow Next.js frontend with credentials
 var allowedOrigins = config.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -144,11 +145,14 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// Auto-run migrations on startup
+// Auto-run migrations and seed content on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
+
+    var seeder = scope.ServiceProvider.GetRequiredService<ContentSeeder>();
+    await seeder.SeedAsync();
 }
 
 app.Run();

@@ -25,7 +25,8 @@ public class GearController(AppDbContext db) : ControllerBase
         var slots = await db.GearSlots
             .Where(g => g.CharacterId == characterId)
             .OrderBy(g => g.SlotName)
-            .Select(g => new GearSlotDto(g.Id, g.SlotName, g.CurrentItem, g.BisItem, g.BisSource, g.IsComplete))
+            .Select(g => new GearSlotDto(g.Id, g.SlotName, g.CurrentItem, g.ItemLevel, g.Source,
+                g.BisItem, g.BisSource, g.IsComplete))
             .ToListAsync();
 
         return Ok(slots);
@@ -49,13 +50,15 @@ public class GearController(AppDbContext db) : ControllerBase
         }
 
         existing.CurrentItem = dto.CurrentItem;
+        existing.ItemLevel = dto.ItemLevel;
+        existing.Source = dto.Source;
         existing.BisItem = dto.BisItem;
         existing.BisSource = dto.BisSource;
         existing.IsComplete = dto.IsComplete;
 
         await db.SaveChangesAsync();
         return Ok(new GearSlotDto(existing.Id, existing.SlotName, existing.CurrentItem,
-            existing.BisItem, existing.BisSource, existing.IsComplete));
+            existing.ItemLevel, existing.Source, existing.BisItem, existing.BisSource, existing.IsComplete));
     }
 
     [HttpDelete("{characterId:int}/{slotName}")]
@@ -66,7 +69,6 @@ public class GearController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(g => g.CharacterId == characterId &&
                                       g.SlotName == slotName &&
                                       g.Character.UserId == CurrentUserId);
-
         if (slot == null) return NotFound();
 
         db.GearSlots.Remove(slot);
@@ -74,10 +76,7 @@ public class GearController(AppDbContext db) : ControllerBase
         return NoContent();
     }
 
-    /// <summary>
-    /// Returns all gear slots across all characters that are not yet complete.
-    /// Used by the "Needs" rollup card on the dashboard.
-    /// </summary>
+    /// <summary>Returns all incomplete gear slots across all characters for the current user.</summary>
     [HttpGet("needs")]
     public async Task<ActionResult<IEnumerable<object>>> GetAllNeeds()
     {
@@ -93,6 +92,7 @@ public class GearController(AppDbContext db) : ControllerBase
                 CharacterClass = g.Character.Class,
                 g.SlotName,
                 g.CurrentItem,
+                g.ItemLevel,
                 g.BisItem,
                 g.BisSource,
             })

@@ -16,9 +16,11 @@ public class Character
     public string Region { get; set; } = "US"; // US | EU
     public string? AvatarUrl { get; set; }
     public string? Spec { get; set; }
+    public int? ItemLevelAverage { get; set; }      // overall average item level
 
     public ICollection<WeeklyTask> WeeklyTasks { get; set; } = [];
     public ICollection<DailyTask> DailyTasks { get; set; } = [];
+    public ICollection<MythicPlusRun> MythicPlusRuns { get; set; } = [];
     public ICollection<ProfessionCooldown> ProfessionCooldowns { get; set; } = [];
     public ICollection<GearSlot> GearSlots { get; set; } = [];
 }

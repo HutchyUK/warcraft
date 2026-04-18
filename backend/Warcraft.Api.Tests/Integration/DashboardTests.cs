@@ -1,7 +1,6 @@
 using System.Net;
 using System.Text.Json;
 using FluentAssertions;
-using Warcraft.Api.Services;
 using Warcraft.Api.Tests.Integration.Infrastructure;
 
 namespace Warcraft.Api.Tests.Integration;
@@ -10,7 +9,6 @@ public class DashboardTests(WarcraftWebApplicationFactory factory)
     : IClassFixture<WarcraftWebApplicationFactory>
 {
     private readonly HttpClient _client = factory.CreateClient();
-
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     [Fact]
@@ -22,13 +20,12 @@ public class DashboardTests(WarcraftWebApplicationFactory factory)
         var response = await _client.GetAsync($"/api/tasks/dashboard/{charId}");
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        var body = await response.Content.ReadAsStringAsync();
-        var doc = JsonDocument.Parse(body);
+        var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         doc.RootElement.GetProperty("name").GetString().Should().Be("Dashboarder");
     }
 
     [Fact]
-    public async Task GetDashboard_AllTemplateRaidsReturnedAsUnchecked()
+    public async Task GetDashboard_AllRaidsReturnedWithZeroBossesKilled()
     {
         await using var db = DbHelper.GetDb(factory.Services);
         var charId = await DbHelper.SeedCharacterAsync(db);
@@ -37,45 +34,32 @@ public class DashboardTests(WarcraftWebApplicationFactory factory)
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var raids = doc.RootElement.GetProperty("weeklyRaids").EnumerateArray().ToList();
+        var raids = doc.RootElement.GetProperty("raids").EnumerateArray().ToList();
 
-        raids.Should().HaveCount(TaskTemplates.WeeklyRaids.Count);
+        // content.json seeds 6 raid lockouts (2 raids × 3 difficulties)
+        raids.Should().HaveCount(6);
         raids.Should().AllSatisfy(r =>
-            r.GetProperty("isChecked").GetBoolean().Should().BeFalse());
+            r.GetProperty("bossesKilled").GetInt32().Should().Be(0));
     }
 
     [Fact]
-    public async Task GetDashboard_AllHeroicDungeonsReturnedAsUnchecked()
+    public async Task GetDashboard_AllWeeklyQuestsReturnedAsUnchecked()
     {
         await using var db = DbHelper.GetDb(factory.Services);
         var charId = await DbHelper.SeedCharacterAsync(db);
 
         var response = await _client.GetAsync($"/api/tasks/dashboard/{charId}");
         var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var heroics = doc.RootElement.GetProperty("heroicDungeons").EnumerateArray().ToList();
+        var quests = doc.RootElement.GetProperty("weeklyQuests").EnumerateArray().ToList();
 
-        heroics.Should().HaveCount(TaskTemplates.HeroicDungeons.Count);
-        heroics.Should().AllSatisfy(h =>
-            h.GetProperty("isChecked").GetBoolean().Should().BeFalse());
+        // content.json seeds 3 weekly quests (world boss, aiding accord, delves)
+        quests.Should().HaveCount(3);
+        quests.Should().AllSatisfy(q =>
+            q.GetProperty("isChecked").GetBoolean().Should().BeFalse());
     }
 
     [Fact]
-    public async Task GetDashboard_AllProfessionCdsReturnedAsReady()
-    {
-        await using var db = DbHelper.GetDb(factory.Services);
-        var charId = await DbHelper.SeedCharacterAsync(db);
-
-        var response = await _client.GetAsync($"/api/tasks/dashboard/{charId}");
-        var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-        var profs = doc.RootElement.GetProperty("professionCooldowns").EnumerateArray().ToList();
-
-        profs.Should().HaveCount(TaskTemplates.ProfessionCooldowns.Count);
-        profs.Should().AllSatisfy(p =>
-            p.GetProperty("isReady").GetBoolean().Should().BeTrue());
-    }
-
-    [Fact]
-    public async Task GetDashboard_PendingTaskCountEqualsAllRaidsAndHeroics()
+    public async Task GetDashboard_MythicPlusRunsEmptyAndVaultZero()
     {
         await using var db = DbHelper.GetDb(factory.Services);
         var charId = await DbHelper.SeedCharacterAsync(db);
@@ -83,14 +67,31 @@ public class DashboardTests(WarcraftWebApplicationFactory factory)
         var response = await _client.GetAsync($"/api/tasks/dashboard/{charId}");
         var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
-        var expected = TaskTemplates.WeeklyRaids.Count + TaskTemplates.HeroicDungeons.Count;
-        doc.RootElement.GetProperty("pendingTaskCount").GetInt32().Should().Be(expected);
+        doc.RootElement.GetProperty("mythicPlusRuns").EnumerateArray().Should().BeEmpty();
+
+        var vault = doc.RootElement.GetProperty("vaultProgress");
+        vault.GetProperty("totalSlots").GetInt32().Should().Be(0);
+        vault.GetProperty("mythicPlusSlots").GetInt32().Should().Be(0);
+        vault.GetProperty("raidSlots").GetInt32().Should().Be(0);
+        vault.GetProperty("delveSlots").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task GetDashboard_PendingTaskCountIncludesAllRaidsAndQuests()
+    {
+        await using var db = DbHelper.GetDb(factory.Services);
+        var charId = await DbHelper.SeedCharacterAsync(db);
+
+        var response = await _client.GetAsync($"/api/tasks/dashboard/{charId}");
+        var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        // 6 raids (0 bosses killed each) + 3 weekly quests unchecked = 9
+        doc.RootElement.GetProperty("pendingTaskCount").GetInt32().Should().Be(9);
     }
 
     [Fact]
     public async Task GetDashboard_CharacterOwnedByOtherUser_Returns404()
     {
-        // Create a character owned by a different user ID
         await using var db = DbHelper.GetDb(factory.Services);
         var otherUser = new Warcraft.Api.Models.User
         {
@@ -102,13 +103,8 @@ public class DashboardTests(WarcraftWebApplicationFactory factory)
 
         var otherChar = new Warcraft.Api.Models.Character
         {
-            UserId = otherUser.Id,
-            Name = "OtherChar",
-            Realm = "Faerlina",
-            Class = "Mage",
-            Level = 70,
-            Role = "DPS",
-            Region = "US",
+            UserId = otherUser.Id, Name = "OtherChar", Realm = "Faerlina",
+            Class = "Mage", Level = 80, Role = "DPS", Region = "US",
         };
         db.Characters.Add(otherChar);
         await db.SaveChangesAsync();
