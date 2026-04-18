@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import type { AuthUser, CharacterDashboard, NeedsItem } from '../src/lib/api';
+import type { AuthUser, CharacterDashboard, CharacterSummary, NeedsItem } from '../src/lib/api';
 import {
   getMe, getLoginUrl, logout,
-  getCharacters, importCharacters,
+  getCharacters, importCharacters, deleteCharacter,
   getDashboard, getNeedsRollup,
 } from '../src/lib/api';
 import { CharacterCard } from './components/CharacterCard';
+import { CharacterFormModal } from './components/CharacterFormModal';
 import { getClassColor } from '../src/lib/classColors';
 
 export default function Dashboard() {
@@ -17,6 +18,8 @@ export default function Dashboard() {
   const [needs, setNeeds] = useState<NeedsItem[]>([]);
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [editTarget, setEditTarget] = useState<CharacterSummary | undefined>();
 
   const loadDashboards = useCallback(async () => {
     const chars = await getCharacters();
@@ -58,6 +61,16 @@ export default function Dashboard() {
     } finally {
       setImporting(false);
     }
+  }
+
+  function openCreate() { setEditTarget(undefined); setShowForm(true); }
+  function openEdit(c: CharacterSummary) { setEditTarget(c); setShowForm(true); }
+  function closeForm() { setShowForm(false); setEditTarget(undefined); }
+  async function handleFormSaved() { closeForm(); await loadDashboards(); }
+
+  async function handleDelete(id: number) {
+    await deleteCharacter(id).catch(() => {});
+    await loadDashboards();
   }
 
   async function handleLogout() {
@@ -105,11 +118,17 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3">
           <button
+            onClick={openCreate}
+            className="text-sm px-3 py-1.5 rounded bg-blue-700 hover:bg-blue-600 text-white transition-colors"
+          >
+            + Add Character
+          </button>
+          <button
             onClick={handleImport}
             disabled={importing}
             className="text-sm px-3 py-1.5 rounded bg-gray-800 hover:bg-gray-700 text-gray-300 transition-colors disabled:opacity-50"
           >
-            {importing ? 'Importing...' : 'Import Characters'}
+            {importing ? 'Importing...' : 'Import'}
           </button>
           <button
             onClick={handleLogout}
@@ -151,6 +170,8 @@ export default function Dashboard() {
                 key={d.id}
                 dashboard={d}
                 onUpdate={loadDashboards}
+                onEdit={() => openEdit(d)}
+                onDelete={() => handleDelete(d.id)}
               />
             ))}
           </div>
@@ -195,6 +216,13 @@ export default function Dashboard() {
           </section>
         )}
       </main>
+      {showForm && (
+        <CharacterFormModal
+          character={editTarget}
+          onClose={closeForm}
+          onSaved={handleFormSaved}
+        />
+      )}
     </div>
   );
 }

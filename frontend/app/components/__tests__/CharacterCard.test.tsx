@@ -27,23 +27,23 @@ describe('CharacterCard', () => {
   // --- Header rendering ---
 
   it('renders the character name', () => {
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('Testchar')).toBeInTheDocument();
   });
 
   it('renders spec and realm in the subtitle', () => {
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText(/Protection/)).toBeInTheDocument();
     expect(screen.getByText(/Faerlina/)).toBeInTheDocument();
   });
 
   it('shows the Main badge when isMain is true', () => {
-    render(<CharacterCard dashboard={makeDashboard({ isMain: true })} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard({ isMain: true })} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText('Main')).toBeInTheDocument();
   });
 
   it('does not show the Main badge when isMain is false', () => {
-    render(<CharacterCard dashboard={makeDashboard({ isMain: false })} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard({ isMain: false })} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.queryByText('Main')).not.toBeInTheDocument();
   });
 
@@ -54,7 +54,7 @@ describe('CharacterCard', () => {
       weeklyRaids: [makeTask('karazhan', 'Karazhan', false)],
       pendingTaskCount: 1,
     });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText(/1 raid/)).toBeInTheDocument();
   });
 
@@ -66,7 +66,7 @@ describe('CharacterCard', () => {
       pendingTaskCount: 0,
       pendingGearCount: 0,
     });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText(/All clear/)).toBeInTheDocument();
   });
 
@@ -76,33 +76,33 @@ describe('CharacterCard', () => {
       pendingTaskCount: 0,
       pendingGearCount: 0,
     });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText(/1 CD/)).toBeInTheDocument();
   });
 
   it('shows gear badge when gear is pending', () => {
     const dashboard = makeDashboard({ pendingGearCount: 2 });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText(/2 gear/)).toBeInTheDocument();
   });
 
   // --- Expand / collapse ---
 
   it('is collapsed by default (task list not visible)', () => {
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.queryByText('Karazhan')).not.toBeInTheDocument();
   });
 
   it('expands when the header is clicked', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
     expect(screen.getByText('Karazhan')).toBeInTheDocument();
   });
 
   it('collapses again on second click', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     const header = screen.getByRole('button', { name: /Testchar/ });
     await user.click(header);
     await user.click(header);
@@ -113,7 +113,7 @@ describe('CharacterCard', () => {
 
   it('shows raids tab by default when expanded', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
     expect(screen.getByText('Karazhan')).toBeInTheDocument();
     expect(screen.queryByText('Shadow Labyrinth (H)')).not.toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('CharacterCard', () => {
 
   it('switches to heroics tab', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
     await user.click(screen.getByRole('button', { name: /Heroics/ }));
     expect(screen.getByText('Shadow Labyrinth (H)')).toBeInTheDocument();
@@ -130,7 +130,7 @@ describe('CharacterCard', () => {
 
   it('switches to prof CDs tab', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
     await user.click(screen.getByRole('button', { name: /Prof CDs/ }));
     expect(screen.getByText('Arcanite Transmute')).toBeInTheDocument();
@@ -140,7 +140,7 @@ describe('CharacterCard', () => {
 
   it('calls checkWeeklyTask and onUpdate when a raid task is clicked', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
     await user.click(screen.getByRole('button', { name: /Karazhan/ }));
     expect(checkWeeklyTask).toHaveBeenCalledWith(1, 'karazhan', true);
@@ -152,7 +152,7 @@ describe('CharacterCard', () => {
     const dashboard = makeDashboard({
       weeklyRaids: [makeTask('karazhan', 'Karazhan', true)],
     });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
     await user.click(screen.getByRole('button', { name: /Karazhan/ }));
     expect(checkWeeklyTask).toHaveBeenCalledWith(1, 'karazhan', false);
@@ -162,7 +162,7 @@ describe('CharacterCard', () => {
 
   it('calls checkDailyTask when a heroic is clicked', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
     await user.click(screen.getByRole('button', { name: /Heroics/ }));
     await user.click(screen.getByRole('button', { name: /Shadow Labyrinth/ }));
@@ -174,7 +174,7 @@ describe('CharacterCard', () => {
 
   it('calls useProfessionCd when a ready CD is clicked', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
     await user.click(screen.getByRole('button', { name: /Prof CDs/ }));
     await user.click(screen.getByRole('button', { name: /Arcanite Transmute/ }));
@@ -188,7 +188,7 @@ describe('CharacterCard', () => {
     const dashboard = makeDashboard({
       professionCooldowns: [makeProfCd('arcanite_transmute', 'Arcanite Transmute', false)],
     });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
     await user.click(screen.getByRole('button', { name: /Prof CDs/ }));
     // Should show an hour countdown (our fixture sets readyAt to ~23h from now)
@@ -200,7 +200,7 @@ describe('CharacterCard', () => {
   it('shows empty state message when no profession CDs are tracked', async () => {
     const user = userEvent.setup();
     const dashboard = makeDashboard({ professionCooldowns: [] });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
     await user.click(screen.getByRole('button', { name: /Prof CDs/ }));
     expect(screen.getByText(/No profession CDs tracked/)).toBeInTheDocument();

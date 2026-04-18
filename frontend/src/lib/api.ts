@@ -136,6 +136,19 @@ export async function importCharacters(region: string): Promise<{ imported: numb
   return apiFetch(`/api/characters/import?region=${region}`, { method: 'POST' });
 }
 
+export async function updateCharacter(id: number, data: {
+  name: string;
+  realm: string;
+  class: string;
+  level: number;
+  role: string;
+  isMain: boolean;
+  region: string;
+  spec?: string;
+}): Promise<CharacterSummary> {
+  return apiFetch(`/api/characters/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
+
 export async function deleteCharacter(id: number): Promise<void> {
   return apiFetch(`/api/characters/${id}`, { method: 'DELETE' });
 }
