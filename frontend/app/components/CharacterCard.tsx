@@ -8,6 +8,8 @@ import { getClassColor } from '../../src/lib/classColors';
 interface Props {
   dashboard: CharacterDashboard;
   onUpdate: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }
 
 function TaskRow({
@@ -94,9 +96,10 @@ function ProfCdRow({
   );
 }
 
-export function CharacterCard({ dashboard, onUpdate }: Props) {
+export function CharacterCard({ dashboard, onUpdate, onEdit, onDelete }: Props) {
   const [expanded, setExpanded] = useState(false);
   const [section, setSection] = useState<'raids' | 'heroics' | 'profs'>('raids');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const classColor = getClassColor(dashboard.class);
   const hasPending = dashboard.pendingTaskCount > 0 || dashboard.pendingGearCount > 0;
@@ -179,6 +182,42 @@ export function CharacterCard({ dashboard, onUpdate }: Props) {
           <span className="text-gray-500 ml-1">{expanded ? '▲' : '▼'}</span>
         </div>
       </button>
+
+      {/* Edit / Delete controls */}
+      {expanded && (
+        <div className="flex items-center gap-2 px-4 py-2 border-b border-gray-700/50 bg-gray-900/40">
+          <button
+            onClick={onEdit}
+            className="text-xs text-gray-400 hover:text-gray-200 transition-colors px-2 py-1 rounded hover:bg-gray-700/50"
+          >
+            Edit
+          </button>
+          {confirmDelete ? (
+            <span className="flex items-center gap-2 text-xs">
+              <span className="text-red-400">Delete?</span>
+              <button
+                onClick={() => { setConfirmDelete(false); onDelete(); }}
+                className="text-red-400 hover:text-red-300 font-medium"
+              >
+                Yes
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-gray-500 hover:text-gray-300"
+              >
+                Cancel
+              </button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-xs text-gray-600 hover:text-red-400 transition-colors px-2 py-1 rounded hover:bg-gray-700/50"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Expanded content */}
       {expanded && (
