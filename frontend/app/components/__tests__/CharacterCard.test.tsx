@@ -1,208 +1,217 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CharacterCard } from '../CharacterCard';
-import { makeDashboard, makeTask, makeProfCd } from './fixtures';
+import { makeDashboard, makeTask, makeProfCd, makeRaid } from './fixtures';
 
-// Mock the API calls made inside CharacterCard
 vi.mock('../../../src/lib/api', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../src/lib/api')>();
   return {
     ...actual,
-    checkWeeklyTask: vi.fn().mockResolvedValue(undefined),
-    checkDailyTask: vi.fn().mockResolvedValue(undefined),
+    setRaidProgress: vi.fn().mockResolvedValue(undefined),
+    checkWeeklyQuest: vi.fn().mockResolvedValue(undefined),
     useProfessionCd: vi.fn().mockResolvedValue(undefined),
+    logMythicPlusRun: vi.fn().mockResolvedValue({ id: 99, dungeonKey: 'ara_kara', dungeonName: 'Ara-Kara', keyLevel: 10, completedAt: new Date().toISOString() }),
+    deleteMythicPlusRun: vi.fn().mockResolvedValue(undefined),
   };
 });
 
-import { checkWeeklyTask, checkDailyTask, useProfessionCd } from '../../../src/lib/api';
+import { setRaidProgress, checkWeeklyQuest, useProfessionCd } from '../../../src/lib/api';
 
 describe('CharacterCard', () => {
   const onUpdate = vi.fn();
+  const noop = vi.fn();
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+  beforeEach(() => vi.clearAllMocks());
 
   // --- Header rendering ---
 
   it('renders the character name', () => {
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     expect(screen.getByText('Testchar')).toBeInTheDocument();
   });
 
   it('renders spec and realm in the subtitle', () => {
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     expect(screen.getByText(/Protection/)).toBeInTheDocument();
-    expect(screen.getByText(/Faerlina/)).toBeInTheDocument();
+    expect(screen.getByText(/Stormrage/)).toBeInTheDocument();
   });
 
   it('shows the Main badge when isMain is true', () => {
-    render(<CharacterCard dashboard={makeDashboard({ isMain: true })} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard({ isMain: true })} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     expect(screen.getByText('Main')).toBeInTheDocument();
   });
 
   it('does not show the Main badge when isMain is false', () => {
-    render(<CharacterCard dashboard={makeDashboard({ isMain: false })} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard({ isMain: false })} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     expect(screen.queryByText('Main')).not.toBeInTheDocument();
   });
 
   // --- Status badges ---
 
-  it('shows pending raid count badge when raids are pending', () => {
+  it('shows pending raid count badge', () => {
     const dashboard = makeDashboard({
-      weeklyRaids: [makeTask('karazhan', 'Karazhan', false)],
+      raids: [makeRaid('nerub_ar_heroic', 'Nerub-ar Palace (H)', 0)],
       pendingTaskCount: 1,
     });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     expect(screen.getByText(/1 raid/)).toBeInTheDocument();
   });
 
-  it('shows All clear badge when nothing is pending', () => {
+  it('shows "All clear" badge when nothing is pending', () => {
     const dashboard = makeDashboard({
-      weeklyRaids: [makeTask('karazhan', 'Karazhan', true)],
-      heroicDungeons: [makeTask('heroic_shadow_labs', 'Shadow Labs (H)', true)],
-      professionCooldowns: [makeProfCd('arcanite_transmute', 'Arcanite', false)], // on CD
+      raids: [makeRaid('nerub_ar_heroic', 'Nerub-ar Palace (H)', 8)],
+      weeklyQuests: [makeTask('world_boss', 'World Boss', true)],
+      professionCooldowns: [makeProfCd('transmutation', 'Transmutation', false)],
       pendingTaskCount: 0,
       pendingGearCount: 0,
     });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
-    expect(screen.getByText(/All clear/)).toBeInTheDocument();
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
+    expect(screen.getByText(/Clear/)).toBeInTheDocument();
   });
 
-  it('shows ready CD count badge when CDs are ready', () => {
+  it('shows ready CD badge when CDs are ready', () => {
     const dashboard = makeDashboard({
-      professionCooldowns: [makeProfCd('arcanite_transmute', 'Arcanite', true)],
+      professionCooldowns: [makeProfCd('transmutation', 'Transmutation', true)],
       pendingTaskCount: 0,
       pendingGearCount: 0,
     });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     expect(screen.getByText(/1 CD/)).toBeInTheDocument();
   });
 
   it('shows gear badge when gear is pending', () => {
     const dashboard = makeDashboard({ pendingGearCount: 2 });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     expect(screen.getByText(/2 gear/)).toBeInTheDocument();
   });
 
   // --- Expand / collapse ---
 
-  it('is collapsed by default (task list not visible)', () => {
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
-    expect(screen.queryByText('Karazhan')).not.toBeInTheDocument();
+  it('is collapsed by default', () => {
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
+    expect(screen.queryByText('Nerub-ar Palace (H)')).not.toBeInTheDocument();
   });
 
   it('expands when the header is clicked', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
-    expect(screen.getByText('Karazhan')).toBeInTheDocument();
+    expect(screen.getByText('Nerub-ar Palace (H)')).toBeInTheDocument();
   });
 
   it('collapses again on second click', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     const header = screen.getByRole('button', { name: /Testchar/ });
     await user.click(header);
     await user.click(header);
-    expect(screen.queryByText('Karazhan')).not.toBeInTheDocument();
+    expect(screen.queryByText('Nerub-ar Palace (H)')).not.toBeInTheDocument();
   });
 
   // --- Tab navigation ---
 
   it('shows raids tab by default when expanded', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
-    expect(screen.getByText('Karazhan')).toBeInTheDocument();
-    expect(screen.queryByText('Shadow Labyrinth (H)')).not.toBeInTheDocument();
+    expect(screen.getByText('Nerub-ar Palace (H)')).toBeInTheDocument();
   });
 
-  it('switches to heroics tab', async () => {
+  it('switches to Quests tab', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
-    await user.click(screen.getByRole('button', { name: /Heroics/ }));
-    expect(screen.getByText('Shadow Labyrinth (H)')).toBeInTheDocument();
-    expect(screen.queryByText('Karazhan')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Quests/ }));
+    expect(screen.getByText('World Boss')).toBeInTheDocument();
   });
 
-  it('switches to prof CDs tab', async () => {
+  it('switches to CDs tab', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
-    await user.click(screen.getByRole('button', { name: /Prof CDs/ }));
-    expect(screen.getByText('Arcanite Transmute')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /CDs/ }));
+    expect(screen.getByText('Transmutation (Alchemy)')).toBeInTheDocument();
   });
 
-  // --- Task toggle (weekly) ---
+  // --- Raid boss count ---
 
-  it('calls checkWeeklyTask and onUpdate when a raid task is clicked', async () => {
+  it('calls setRaidProgress when + button is clicked on a raid', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
-    await user.click(screen.getByRole('button', { name: /Karazhan/ }));
-    expect(checkWeeklyTask).toHaveBeenCalledWith(1, 'karazhan', true);
+    // Each raid row has a + button — click the first one
+    const plusButtons = screen.getAllByRole('button', { name: '+' });
+    await user.click(plusButtons[0]);
+    expect(setRaidProgress).toHaveBeenCalledWith(1, 'nerub_ar_heroic', 1);
     expect(onUpdate).toHaveBeenCalled();
   });
 
-  it('unchecks a checked raid task', async () => {
+  it('calls setRaidProgress when − button is clicked on a partially-complete raid', async () => {
     const user = userEvent.setup();
     const dashboard = makeDashboard({
-      weeklyRaids: [makeTask('karazhan', 'Karazhan', true)],
+      raids: [makeRaid('nerub_ar_heroic', 'Nerub-ar Palace (H)', 4)],
     });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
-    await user.click(screen.getByRole('button', { name: /Karazhan/ }));
-    expect(checkWeeklyTask).toHaveBeenCalledWith(1, 'karazhan', false);
+    const minusButton = screen.getByRole('button', { name: '−' });
+    await user.click(minusButton);
+    expect(setRaidProgress).toHaveBeenCalledWith(1, 'nerub_ar_heroic', 3);
   });
 
-  // --- Task toggle (heroic) ---
+  // --- Weekly quest toggle ---
 
-  it('calls checkDailyTask when a heroic is clicked', async () => {
+  it('calls checkWeeklyQuest when a quest is toggled', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
-    await user.click(screen.getByRole('button', { name: /Heroics/ }));
-    await user.click(screen.getByRole('button', { name: /Shadow Labyrinth/ }));
-    expect(checkDailyTask).toHaveBeenCalledWith(1, 'heroic_shadow_labs', true);
+    await user.click(screen.getByRole('button', { name: /Quests/ }));
+    await user.click(screen.getByRole('button', { name: /World Boss/ }));
+    expect(checkWeeklyQuest).toHaveBeenCalledWith(1, 'world_boss', true);
     expect(onUpdate).toHaveBeenCalled();
+  });
+
+  it('unchecks a checked quest', async () => {
+    const user = userEvent.setup();
+    const dashboard = makeDashboard({
+      weeklyQuests: [makeTask('world_boss', 'World Boss', true)],
+    });
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
+    await user.click(screen.getByRole('button', { name: /Testchar/ }));
+    await user.click(screen.getByRole('button', { name: /Quests/ }));
+    await user.click(screen.getByRole('button', { name: /World Boss/ }));
+    expect(checkWeeklyQuest).toHaveBeenCalledWith(1, 'world_boss', false);
   });
 
   // --- Profession CD toggle ---
 
   it('calls useProfessionCd when a ready CD is clicked', async () => {
     const user = userEvent.setup();
-    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={makeDashboard()} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
-    await user.click(screen.getByRole('button', { name: /Prof CDs/ }));
-    await user.click(screen.getByRole('button', { name: /Arcanite Transmute/ }));
-    // isReady = true, so clicking marks it as used (used = true)
-    expect(useProfessionCd).toHaveBeenCalledWith(1, 'arcanite_transmute', true);
+    await user.click(screen.getByRole('button', { name: /CDs/ }));
+    await user.click(screen.getByRole('button', { name: /Transmutation/ }));
+    expect(useProfessionCd).toHaveBeenCalledWith(1, 'transmutation', true);
     expect(onUpdate).toHaveBeenCalled();
   });
 
-  it('shows countdown hours when CD is on cooldown', async () => {
+  it('shows hour countdown when CD is on cooldown', async () => {
     const user = userEvent.setup();
     const dashboard = makeDashboard({
-      professionCooldowns: [makeProfCd('arcanite_transmute', 'Arcanite Transmute', false)],
+      professionCooldowns: [makeProfCd('transmutation', 'Transmutation (Alchemy)', false)],
     });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
-    await user.click(screen.getByRole('button', { name: /Prof CDs/ }));
-    // Should show an hour countdown (our fixture sets readyAt to ~23h from now)
+    await user.click(screen.getByRole('button', { name: /CDs/ }));
     expect(screen.getByText(/\d+h/)).toBeInTheDocument();
   });
 
-  // --- Empty prof CDs ---
-
-  it('shows empty state message when no profession CDs are tracked', async () => {
+  it('shows empty state when no CDs are tracked', async () => {
     const user = userEvent.setup();
     const dashboard = makeDashboard({ professionCooldowns: [] });
-    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={vi.fn()} onDelete={vi.fn()} />);
+    render(<CharacterCard dashboard={dashboard} onUpdate={onUpdate} onEdit={noop} onDelete={noop} />);
     await user.click(screen.getByRole('button', { name: /Testchar/ }));
-    await user.click(screen.getByRole('button', { name: /Prof CDs/ }));
+    await user.click(screen.getByRole('button', { name: /CDs/ }));
     expect(screen.getByText(/No profession CDs tracked/)).toBeInTheDocument();
   });
 });
