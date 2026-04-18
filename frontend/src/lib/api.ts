@@ -32,6 +32,7 @@ export interface CharacterSummary {
   region: string;
   avatarUrl: string | null;
   spec: string | null;
+  itemLevelAverage: number | null;
 }
 
 export interface TaskDto {
@@ -51,10 +52,38 @@ export interface ProfessionCdDto {
   readyAt: string | null;
 }
 
+export interface RaidDashboardDto {
+  key: string;
+  name: string;
+  difficulty: string;
+  bossCount: number;
+  bossesKilled: number;
+}
+
+export interface MythicPlusRunDto {
+  id: number;
+  dungeonKey: string;
+  dungeonName: string;
+  keyLevel: number;
+  completedAt: string;
+}
+
+export interface VaultProgressDto {
+  mythicPlusRuns: number;
+  mythicPlusSlots: number;
+  raidBossKills: number;
+  raidSlots: number;
+  delvesDone: boolean;
+  delveSlots: number;
+  totalSlots: number;
+}
+
 export interface GearSlotDto {
   id: number;
   slotName: string;
   currentItem: string;
+  itemLevel: number | null;
+  source: string | null;
   bisItem: string;
   bisSource: string;
   isComplete: boolean;
@@ -71,10 +100,13 @@ export interface CharacterDashboard {
   region: string;
   avatarUrl: string | null;
   spec: string | null;
-  weeklyRaids: TaskDto[];
-  heroicDungeons: TaskDto[];
+  itemLevelAverage: number | null;
+  raids: RaidDashboardDto[];
+  mythicPlusRuns: MythicPlusRunDto[];
+  weeklyQuests: TaskDto[];
   professionCooldowns: ProfessionCdDto[];
   gearSlots: GearSlotDto[];
+  vaultProgress: VaultProgressDto;
   pendingTaskCount: number;
   pendingGearCount: number;
 }
@@ -85,6 +117,7 @@ export interface NeedsItem {
   characterClass: string;
   slotName: string;
   currentItem: string;
+  itemLevel: number | null;
   bisItem: string;
   bisSource: string;
 }
@@ -132,10 +165,6 @@ export async function createCharacter(data: {
   return apiFetch('/api/characters', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function importCharacters(region: string): Promise<{ imported: number; total: number; apiFailed?: boolean }> {
-  return apiFetch(`/api/characters/import?region=${region}`, { method: 'POST' });
-}
-
 export async function updateCharacter(id: number, data: {
   name: string;
   realm: string;
@@ -149,6 +178,10 @@ export async function updateCharacter(id: number, data: {
   return apiFetch(`/api/characters/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 
+export async function importCharacters(region: string): Promise<{ imported: number; total: number; apiFailed?: boolean }> {
+  return apiFetch(`/api/characters/import?region=${region}`, { method: 'POST' });
+}
+
 export async function deleteCharacter(id: number): Promise<void> {
   return apiFetch(`/api/characters/${id}`, { method: 'DELETE' });
 }
@@ -159,27 +192,48 @@ export async function getDashboard(characterId: number): Promise<CharacterDashbo
   return apiFetch(`/api/tasks/dashboard/${characterId}`);
 }
 
-// --- Tasks ---
+// --- Raids ---
 
-export async function checkWeeklyTask(characterId: number, taskKey: string, isChecked: boolean): Promise<void> {
+export async function setRaidProgress(characterId: number, raidKey: string, bossesKilled: number): Promise<void> {
+  return apiFetch(`/api/tasks/raid/${characterId}/${raidKey}`, {
+    method: 'POST',
+    body: JSON.stringify({ bossesKilled }),
+  });
+}
+
+// --- Weekly quests ---
+
+export async function checkWeeklyQuest(characterId: number, taskKey: string, isChecked: boolean): Promise<void> {
   return apiFetch(`/api/tasks/weekly/${characterId}/${taskKey}`, {
     method: 'POST',
     body: JSON.stringify({ isChecked }),
   });
 }
 
-export async function checkDailyTask(characterId: number, taskKey: string, isChecked: boolean): Promise<void> {
-  return apiFetch(`/api/tasks/daily/${characterId}/${taskKey}`, {
-    method: 'POST',
-    body: JSON.stringify({ isChecked }),
-  });
-}
+// --- Profession CDs ---
 
 export async function useProfessionCd(characterId: number, cdKey: string, used: boolean): Promise<void> {
   return apiFetch(`/api/tasks/profession/${characterId}/${cdKey}`, {
     method: 'POST',
     body: JSON.stringify({ used }),
   });
+}
+
+// --- Mythic+ ---
+
+export async function logMythicPlusRun(characterId: number, data: {
+  dungeonKey: string;
+  dungeonName: string;
+  keyLevel: number;
+}): Promise<MythicPlusRunDto> {
+  return apiFetch(`/api/mythicplus/${characterId}`, {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteMythicPlusRun(runId: number): Promise<void> {
+  return apiFetch(`/api/mythicplus/${runId}`, { method: 'DELETE' });
 }
 
 // --- Gear ---
@@ -190,12 +244,18 @@ export async function getNeedsRollup(): Promise<NeedsItem[]> {
 
 export async function upsertGearSlot(characterId: number, slotName: string, data: {
   currentItem: string;
+  itemLevel?: number | null;
+  source?: string | null;
   bisItem: string;
   bisSource: string;
   isComplete: boolean;
 }): Promise<GearSlotDto> {
   return apiFetch(`/api/gear/${characterId}/${encodeURIComponent(slotName)}`, {
     method: 'PUT',
-    body: JSON.stringify(data),
+    body: JSON.stringify({ slotName, ...data }),
   });
+}
+
+export async function deleteGearSlot(characterId: number, slotName: string): Promise<void> {
+  return apiFetch(`/api/gear/${characterId}/${encodeURIComponent(slotName)}`, { method: 'DELETE' });
 }

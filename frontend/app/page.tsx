@@ -51,13 +51,13 @@ export default function Dashboard() {
     try {
       const result = await importCharacters('US');
       if (result.apiFailed) {
-        setImportMsg('Classic API unavailable — add characters manually.');
+        setImportMsg('Blizzard API unavailable — add characters manually.');
       } else {
         setImportMsg(`Imported ${result.imported} new character${result.imported !== 1 ? 's' : ''}.`);
         await loadDashboards();
       }
     } catch {
-      setImportMsg('Import failed. Check that you have Classic Anniversary characters on your account.');
+      setImportMsg('Import failed. Check that you have Retail characters on your account.');
     } finally {
       setImporting(false);
     }
@@ -93,7 +93,7 @@ export default function Dashboard() {
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center gap-6">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white mb-2">The War Room</h1>
-          <p className="text-gray-400 text-sm">WoW Classic Anniversary Alt Manager</p>
+          <p className="text-gray-400 text-sm">WoW Retail Alt Manager</p>
         </div>
         <a
           href={getLoginUrl()}
@@ -114,7 +114,7 @@ export default function Dashboard() {
       <header className="border-b border-gray-800 px-4 py-3 flex items-center justify-between">
         <div>
           <h1 className="font-bold text-lg">The War Room</h1>
-          <p className="text-xs text-gray-400">Classic Anniversary · {user.battleTag}</p>
+          <p className="text-xs text-gray-400">Retail · {user.battleTag}</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -205,10 +205,13 @@ export default function Dashboard() {
                     style={{ backgroundColor: getClassColor(item.characterClass) }}
                   />
                   <span className="text-gray-300 w-28 truncate">{item.characterName}</span>
-                  <span className="text-gray-500">{item.slotName}</span>
-                  <span className="text-red-400 truncate">{item.bisItem}</span>
+                  <span className="text-gray-500 w-20 truncate">{item.slotName}</span>
+                  {item.itemLevel != null && (
+                    <span className="text-gray-600 text-xs">{item.itemLevel}</span>
+                  )}
+                  <span className="text-red-400 truncate flex-1">→ {item.bisItem}</span>
                   {item.bisSource && (
-                    <span className="text-gray-600 text-xs ml-auto truncate">{item.bisSource}</span>
+                    <span className="text-gray-600 text-xs ml-auto truncate hidden sm:block">{item.bisSource}</span>
                   )}
                 </div>
               ))}
