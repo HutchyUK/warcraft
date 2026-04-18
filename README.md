@@ -5,8 +5,14 @@ profession cooldowns, and gear progression across multiple alts.
 
 ## Quick start
 
-See [SETUP.md](SETUP.md) for the full local development guide.
+**With Docker** (recommended — no SDK required):
+```bash
+cp .env.docker.example .env.docker   # fill in Blizzard credentials
+docker-compose --env-file .env.docker up --build
+# → http://localhost:3000
+```
 
+**Without Docker** (requires .NET 10 SDK + Node 20):
 ```bash
 # Backend (https://localhost:7211)
 cd backend/Warcraft.Api && dotnet run --launch-profile https
@@ -14,6 +20,8 @@ cd backend/Warcraft.Api && dotnet run --launch-profile https
 # Frontend (http://localhost:3000)
 cd frontend && npm run dev
 ```
+
+See [SETUP.md](SETUP.md) for the full setup guide including Blizzard app registration.
 
 ## Project structure
 
