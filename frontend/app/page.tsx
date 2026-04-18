@@ -7,6 +7,7 @@ import {
   getCharacters, importCharacters, deleteCharacter,
   getDashboard, getNeedsRollup,
 } from '../src/lib/api';
+import Link from 'next/link';
 import { CharacterCard } from './components/CharacterCard';
 import { CharacterFormModal } from './components/CharacterFormModal';
 import { getClassColor } from '../src/lib/classColors';
@@ -130,6 +131,12 @@ export default function Dashboard() {
           >
             {importing ? 'Importing...' : 'Import'}
           </button>
+          <Link
+            href="/settings"
+            className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            Settings
+          </Link>
           <button
             onClick={handleLogout}
             className="text-sm text-gray-500 hover:text-gray-300 transition-colors"

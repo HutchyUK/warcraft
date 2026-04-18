@@ -259,3 +259,94 @@ export async function upsertGearSlot(characterId: number, slotName: string, data
 export async function deleteGearSlot(characterId: number, slotName: string): Promise<void> {
   return apiFetch(`/api/gear/${characterId}/${encodeURIComponent(slotName)}`, { method: 'DELETE' });
 }
+
+// --- Admin: Content Templates ---
+
+export interface RaidTemplate {
+  id: number;
+  key: string;
+  name: string;
+  raidName: string;
+  difficulty: string;
+  bossCount: number;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface DungeonTemplate {
+  id: number;
+  key: string;
+  name: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface WeeklyQuestTemplate {
+  id: number;
+  key: string;
+  name: string;
+  questType: string;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export interface ProfessionCdTemplate {
+  id: number;
+  key: string;
+  name: string;
+  periodDays: number;
+  isActive: boolean;
+  sortOrder: number;
+}
+
+export async function getAdminRaids(): Promise<RaidTemplate[]> {
+  return apiFetch('/api/admin/raids');
+}
+export async function createAdminRaid(data: Omit<RaidTemplate, 'id' | 'sortOrder'>): Promise<RaidTemplate> {
+  return apiFetch('/api/admin/raids', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function updateAdminRaid(id: number, data: Omit<RaidTemplate, 'id' | 'sortOrder'>): Promise<RaidTemplate> {
+  return apiFetch(`/api/admin/raids/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+export async function deleteAdminRaid(id: number): Promise<void> {
+  return apiFetch(`/api/admin/raids/${id}`, { method: 'DELETE' });
+}
+
+export async function getAdminDungeons(): Promise<DungeonTemplate[]> {
+  return apiFetch('/api/admin/dungeons');
+}
+export async function createAdminDungeon(data: Omit<DungeonTemplate, 'id' | 'sortOrder'>): Promise<DungeonTemplate> {
+  return apiFetch('/api/admin/dungeons', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function updateAdminDungeon(id: number, data: Omit<DungeonTemplate, 'id' | 'sortOrder'>): Promise<DungeonTemplate> {
+  return apiFetch(`/api/admin/dungeons/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+export async function deleteAdminDungeon(id: number): Promise<void> {
+  return apiFetch(`/api/admin/dungeons/${id}`, { method: 'DELETE' });
+}
+
+export async function getAdminQuests(): Promise<WeeklyQuestTemplate[]> {
+  return apiFetch('/api/admin/quests');
+}
+export async function createAdminQuest(data: Omit<WeeklyQuestTemplate, 'id' | 'sortOrder'>): Promise<WeeklyQuestTemplate> {
+  return apiFetch('/api/admin/quests', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function updateAdminQuest(id: number, data: Omit<WeeklyQuestTemplate, 'id' | 'sortOrder'>): Promise<WeeklyQuestTemplate> {
+  return apiFetch(`/api/admin/quests/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+export async function deleteAdminQuest(id: number): Promise<void> {
+  return apiFetch(`/api/admin/quests/${id}`, { method: 'DELETE' });
+}
+
+export async function getAdminProfessionCds(): Promise<ProfessionCdTemplate[]> {
+  return apiFetch('/api/admin/profession-cds');
+}
+export async function createAdminProfessionCd(data: Omit<ProfessionCdTemplate, 'id' | 'sortOrder'>): Promise<ProfessionCdTemplate> {
+  return apiFetch('/api/admin/profession-cds', { method: 'POST', body: JSON.stringify(data) });
+}
+export async function updateAdminProfessionCd(id: number, data: Omit<ProfessionCdTemplate, 'id' | 'sortOrder'>): Promise<ProfessionCdTemplate> {
+  return apiFetch(`/api/admin/profession-cds/${id}`, { method: 'PUT', body: JSON.stringify(data) });
+}
+export async function deleteAdminProfessionCd(id: number): Promise<void> {
+  return apiFetch(`/api/admin/profession-cds/${id}`, { method: 'DELETE' });
+}
