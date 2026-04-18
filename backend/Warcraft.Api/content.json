@@ -1,0 +1,28 @@
+{
+  "raids": [
+    { "key": "nerub_ar_normal",    "name": "Nerub-ar Palace (N)",          "raidName": "Nerub-ar Palace",          "difficulty": "normal",  "bossCount": 8 },
+    { "key": "nerub_ar_heroic",    "name": "Nerub-ar Palace (H)",          "raidName": "Nerub-ar Palace",          "difficulty": "heroic",  "bossCount": 8 },
+    { "key": "nerub_ar_mythic",    "name": "Nerub-ar Palace (M)",          "raidName": "Nerub-ar Palace",          "difficulty": "mythic",  "bossCount": 8 },
+    { "key": "undermine_normal",   "name": "Liberation of Undermine (N)",  "raidName": "Liberation of Undermine", "difficulty": "normal",  "bossCount": 8 },
+    { "key": "undermine_heroic",   "name": "Liberation of Undermine (H)",  "raidName": "Liberation of Undermine", "difficulty": "heroic",  "bossCount": 8 },
+    { "key": "undermine_mythic",   "name": "Liberation of Undermine (M)",  "raidName": "Liberation of Undermine", "difficulty": "mythic",  "bossCount": 8 }
+  ],
+  "dungeons": [
+    { "key": "ara_kara",           "name": "Ara-Kara, City of Echoes" },
+    { "key": "city_of_threads",    "name": "City of Threads" },
+    { "key": "stonevault",         "name": "The Stonevault" },
+    { "key": "dawnbreaker",        "name": "The Dawnbreaker" },
+    { "key": "mists_tirna_scithe", "name": "Mists of Tirna Scithe" },
+    { "key": "necrotic_wake",      "name": "The Necrotic Wake" },
+    { "key": "siege_of_boralus",   "name": "Siege of Boralus" },
+    { "key": "grim_batol",         "name": "Grim Batol" }
+  ],
+  "weeklyQuests": [
+    { "key": "world_boss",    "name": "World Boss",        "questType": "WORLD_BOSS" },
+    { "key": "aiding_accord", "name": "Aiding the Accord", "questType": "FACTION_WEEKLY" },
+    { "key": "delves_weekly", "name": "Delves Weekly",     "questType": "DELVE" }
+  ],
+  "professionCooldowns": [
+    { "key": "transmutation", "name": "Transmutation (Alchemy)", "periodDays": 1 }
+  ]
+}

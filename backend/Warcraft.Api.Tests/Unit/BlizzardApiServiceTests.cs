@@ -26,7 +26,7 @@ public class BlizzardApiServiceTests
     public async Task NonSuccessStatus_ReturnsApiFailed()
     {
         var svc = BuildService(RespondWith(HttpStatusCode.Forbidden));
-        var result = await svc.GetClassicCharactersAsync("token", "US");
+        var result = await svc.GetRetailCharactersAsync("token", "US");
         result.ApiFailed.Should().BeTrue();
         result.Characters.Should().BeEmpty();
     }
@@ -35,7 +35,7 @@ public class BlizzardApiServiceTests
     public async Task NotFoundStatus_ReturnsApiFailed()
     {
         var svc = BuildService(RespondWith(HttpStatusCode.NotFound));
-        var result = await svc.GetClassicCharactersAsync("token", "US");
+        var result = await svc.GetRetailCharactersAsync("token", "US");
         result.ApiFailed.Should().BeTrue();
     }
 
@@ -46,14 +46,14 @@ public class BlizzardApiServiceTests
     {
         var json = """{"id":123,"battletag":"Test#1234"}""";
         var svc = BuildService(RespondWith(HttpStatusCode.OK, json));
-        var result = await svc.GetClassicCharactersAsync("token", "US");
+        var result = await svc.GetRetailCharactersAsync("token", "US");
         result.ApiFailed.Should().BeTrue();
     }
 
-    // --- Filtering by game_version ---
+    // --- Filtering: retail includes non-classic, excludes classic ---
 
     [Fact]
-    public async Task MixedGameVersions_ReturnsOnlyClassicCharacters()
+    public async Task MixedGameVersions_ReturnsOnlyRetailCharacters()
     {
         var json = """
         {
@@ -69,7 +69,7 @@ public class BlizzardApiServiceTests
               },
               {
                 "name": "RetailChar",
-                "level": 70,
+                "level": 80,
                 "realm": { "name": "Stormrage", "slug": "stormrage" },
                 "playable_class": { "name": "Mage" },
                 "id": 2,
@@ -80,23 +80,23 @@ public class BlizzardApiServiceTests
         }
         """;
         var svc = BuildService(RespondWith(HttpStatusCode.OK, json));
-        var result = await svc.GetClassicCharactersAsync("token", "US");
+        var result = await svc.GetRetailCharactersAsync("token", "US");
         result.ApiFailed.Should().BeFalse();
         result.Characters.Should().HaveCount(1);
-        result.Characters[0].Name.Should().Be("ClassicChar");
-        result.Characters[0].Class.Should().Be("Warrior");
+        result.Characters[0].Name.Should().Be("RetailChar");
+        result.Characters[0].Class.Should().Be("Mage");
     }
 
-    // --- Realm slug fallback ---
+    // --- Realm slug fallback (inverted: classic slug = excluded) ---
 
     [Fact]
-    public async Task NoGameVersionField_FallsBackToRealmSlug_IncludesClassicSlug()
+    public async Task NoGameVersionField_ClassicRealmSlug_ExcludesCharacter()
     {
         var json = """
         {
           "wow_accounts": [{
             "characters": [{
-              "name": "SlugFallback",
+              "name": "ClassicSlugChar",
               "level": 60,
               "realm": { "name": "Old Blanchy", "slug": "old-blanchy-classic" },
               "playable_class": { "name": "Druid" },
@@ -106,14 +106,13 @@ public class BlizzardApiServiceTests
         }
         """;
         var svc = BuildService(RespondWith(HttpStatusCode.OK, json));
-        var result = await svc.GetClassicCharactersAsync("token", "US");
+        var result = await svc.GetRetailCharactersAsync("token", "US");
         result.ApiFailed.Should().BeFalse();
-        result.Characters.Should().HaveCount(1);
-        result.Characters[0].Name.Should().Be("SlugFallback");
+        result.Characters.Should().BeEmpty();
     }
 
     [Fact]
-    public async Task NoGameVersionField_NonClassicSlug_ExcludesCharacter()
+    public async Task NoGameVersionField_NonClassicSlug_IncludesCharacter()
     {
         var json = """
         {
@@ -129,9 +128,10 @@ public class BlizzardApiServiceTests
         }
         """;
         var svc = BuildService(RespondWith(HttpStatusCode.OK, json));
-        var result = await svc.GetClassicCharactersAsync("token", "US");
+        var result = await svc.GetRetailCharactersAsync("token", "US");
         result.ApiFailed.Should().BeFalse();
-        result.Characters.Should().BeEmpty();
+        result.Characters.Should().HaveCount(1);
+        result.Characters[0].Name.Should().Be("RetailOnly");
     }
 
     // --- HTTP exception ---
@@ -140,16 +140,16 @@ public class BlizzardApiServiceTests
     public async Task HttpClientThrows_ReturnsApiFailed_NoException()
     {
         var svc = BuildService(new ThrowingHandler());
-        var act = async () => await svc.GetClassicCharactersAsync("token", "US");
+        var act = async () => await svc.GetRetailCharactersAsync("token", "US");
         await act.Should().NotThrowAsync();
-        var result = await svc.GetClassicCharactersAsync("token", "US");
+        var result = await svc.GetRetailCharactersAsync("token", "US");
         result.ApiFailed.Should().BeTrue();
     }
 
-    // --- Classic Era type ---
+    // --- Classic Era is excluded from retail ---
 
     [Fact]
-    public async Task ClassicEraType_IsIncluded()
+    public async Task ClassicEraType_IsExcluded()
     {
         var json = """
         {
@@ -166,9 +166,32 @@ public class BlizzardApiServiceTests
         }
         """;
         var svc = BuildService(RespondWith(HttpStatusCode.OK, json));
-        var result = await svc.GetClassicCharactersAsync("token", "US");
+        var result = await svc.GetRetailCharactersAsync("token", "US");
+        result.Characters.Should().BeEmpty();
+    }
+
+    // --- No game_version field, no realm slug → assume retail, include ---
+
+    [Fact]
+    public async Task NoGameVersionNoSlug_AssumedRetail_Included()
+    {
+        var json = """
+        {
+          "wow_accounts": [{
+            "characters": [{
+              "name": "UnknownChar",
+              "level": 80,
+              "realm": { "name": "Area 52" },
+              "playable_class": { "name": "Hunter" },
+              "id": 6
+            }]
+          }]
+        }
+        """;
+        var svc = BuildService(RespondWith(HttpStatusCode.OK, json));
+        var result = await svc.GetRetailCharactersAsync("token", "US");
         result.Characters.Should().HaveCount(1);
-        result.Characters[0].Name.Should().Be("EraChar");
+        result.Characters[0].Name.Should().Be("UnknownChar");
     }
 }
 

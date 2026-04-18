@@ -14,9 +14,11 @@ public class GearTests(WarcraftWebApplicationFactory factory)
     private static object HeadSlot(bool isComplete = false) => new
     {
         slotName = "Head",
-        currentItem = "Tier 6 Helm",
-        bisItem = "Cursed Vision of Sargeras",
-        bisSource = "Black Temple - Illidan",
+        currentItem = "Nerub-ar Palace Helm",
+        itemLevel = 639,
+        source = "drop",
+        bisItem = "Helm of the Sanguine Lord",
+        bisSource = "Liberation of Undermine (H) - Gallywix",
         isComplete,
     };
 
@@ -31,8 +33,10 @@ public class GearTests(WarcraftWebApplicationFactory factory)
 
         var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         doc.RootElement.GetProperty("slotName").GetString().Should().Be("Head");
+        doc.RootElement.GetProperty("itemLevel").GetInt32().Should().Be(639);
+        doc.RootElement.GetProperty("source").GetString().Should().Be("drop");
         doc.RootElement.GetProperty("bisItem").GetString()
-            .Should().Be("Cursed Vision of Sargeras");
+            .Should().Be("Helm of the Sanguine Lord");
     }
 
     [Fact]
@@ -45,8 +49,10 @@ public class GearTests(WarcraftWebApplicationFactory factory)
         {
             slotName = "Neck",
             currentItem = "Some Blue",
-            bisItem = "Pendant of the Violet Eye",
-            bisSource = "Karazhan - Nightbane",
+            itemLevel = 619,
+            source = "world-quest",
+            bisItem = "Amulet of the Void",
+            bisSource = "Nerub-ar Palace (H) - Ulgrax",
             isComplete = false,
         });
 
@@ -70,9 +76,7 @@ public class GearTests(WarcraftWebApplicationFactory factory)
 
         var needs = await _client.GetAsync("/api/gear/needs");
         var doc = JsonDocument.Parse(await needs.Content.ReadAsStringAsync());
-        var items = doc.RootElement.EnumerateArray().ToList();
-
-        items.Should().NotContain(n =>
+        doc.RootElement.EnumerateArray().Should().NotContain(n =>
             n.GetProperty("characterName").GetString() == "CompletedChar");
     }
 
@@ -82,10 +86,7 @@ public class GearTests(WarcraftWebApplicationFactory factory)
         await using var db = DbHelper.GetDb(factory.Services);
         var charId = await DbHelper.SeedCharacterAsync(db, name: "ProgressChar");
 
-        // Start incomplete
         await _client.PutAsJsonAsync($"/api/gear/{charId}/Waist", HeadSlot(isComplete: false));
-
-        // Mark complete
         await _client.PutAsJsonAsync($"/api/gear/{charId}/Waist", HeadSlot(isComplete: true));
 
         var needs = await _client.GetAsync("/api/gear/needs");
@@ -114,8 +115,10 @@ public class GearTests(WarcraftWebApplicationFactory factory)
     public async Task GearNeeds_OtherUsersCharacter_NotIncluded()
     {
         await using var db = DbHelper.GetDb(factory.Services);
+        // Seed the test user first so it claims Id = 1 (= TestUserId).
+        // This ensures the "other" user gets a different Id and their gear is excluded.
+        await DbHelper.SeedCharacterAsync(db);
 
-        // Seed character for a different user
         var otherUser = new Warcraft.Api.Models.User
             { BlizzardAccountId = "gear-other", BattleTag = "GearOther#111" };
         db.Users.Add(otherUser);
@@ -124,24 +127,19 @@ public class GearTests(WarcraftWebApplicationFactory factory)
         var otherChar = new Warcraft.Api.Models.Character
         {
             UserId = otherUser.Id, Name = "OtherGearChar", Realm = "Faerlina",
-            Class = "Hunter", Level = 70, Role = "DPS", Region = "US"
+            Class = "Hunter", Level = 80, Role = "DPS", Region = "US",
         };
         db.Characters.Add(otherChar);
         await db.SaveChangesAsync();
 
-        // Insert an incomplete gear slot directly (bypasses controller auth check)
         db.GearSlots.Add(new Warcraft.Api.Models.GearSlot
         {
-            CharacterId = otherChar.Id,
-            SlotName = "Ring1",
-            CurrentItem = "Some Ring",
-            BisItem = "Ring of a Thousand Marks",
-            BisSource = "Karazhan",
-            IsComplete = false,
+            CharacterId = otherChar.Id, SlotName = "Ring1",
+            CurrentItem = "Some Ring", BisItem = "Ring of Power",
+            BisSource = "Nerub-ar Palace", IsComplete = false,
         });
         await db.SaveChangesAsync();
 
-        // The authenticated user (TestUserId = 1) should not see this in their needs
         var needs = await _client.GetAsync("/api/gear/needs");
         var doc = JsonDocument.Parse(await needs.Content.ReadAsStringAsync());
         doc.RootElement.EnumerateArray().Should().NotContain(n =>

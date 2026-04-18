@@ -1,6 +1,5 @@
 using System.Net.Http.Headers;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace Warcraft.Api.Services;
 
@@ -22,14 +21,14 @@ public record BlizzardCharacter(
 
 public class BlizzardApiService(IHttpClientFactory httpClientFactory, ILogger<BlizzardApiService> logger)
 {
-    public async Task<BlizzardCharacterResult> GetClassicCharactersAsync(
+    public async Task<BlizzardCharacterResult> GetRetailCharactersAsync(
         string accessToken, string region)
     {
         var regionLower = region.ToLowerInvariant();
         var baseUrl = regionLower == "eu"
             ? "https://eu.api.blizzard.com"
             : "https://us.api.blizzard.com";
-        var namespace_ = $"profile-classic1x-{regionLower}";
+        var namespace_ = $"profile-{regionLower}";
 
         var url = $"{baseUrl}/profile/user/wow?namespace={namespace_}&locale=en_US";
 
@@ -44,7 +43,7 @@ public class BlizzardApiService(IHttpClientFactory httpClientFactory, ILogger<Bl
             if (!response.IsSuccessStatusCode)
             {
                 logger.LogWarning(
-                    "Blizzard Classic API returned {StatusCode} for namespace {Namespace}. " +
+                    "Blizzard Retail API returned {StatusCode} for namespace {Namespace}. " +
                     "Falling back to manual character entry.",
                     response.StatusCode, namespace_);
                 return new BlizzardCharacterResult { ApiFailed = true };
@@ -64,9 +63,8 @@ public class BlizzardApiService(IHttpClientFactory httpClientFactory, ILogger<Bl
 
                 foreach (var ch in chars.EnumerateArray())
                 {
-                    // Filter to Classic characters only
-                    // Field name may vary — check game_version or realm namespace
-                    if (!IsClassicCharacter(ch)) continue;
+                    // Exclude Classic characters — the retail namespace still includes them
+                    if (!IsRetailCharacter(ch)) continue;
 
                     characters.Add(new BlizzardCharacter(
                         Name: ch.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "",
@@ -77,7 +75,7 @@ public class BlizzardApiService(IHttpClientFactory httpClientFactory, ILogger<Bl
                             ? pc.TryGetProperty("name", out var cn) ? cn.GetString() ?? "" : ""
                             : "",
                         Level: ch.TryGetProperty("level", out var l) ? l.GetInt32() : 0,
-                        Spec: null, // Not available in list endpoint
+                        Spec: null,    // Not available in list endpoint
                         AvatarUrl: null, // Requires separate media endpoint call
                         BlizzardId: ch.TryGetProperty("id", out var id) ? id.GetInt64().ToString() : null
                     ));
@@ -88,28 +86,28 @@ public class BlizzardApiService(IHttpClientFactory httpClientFactory, ILogger<Bl
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to fetch Blizzard Classic characters");
+            logger.LogError(ex, "Failed to fetch Blizzard Retail characters");
             return new BlizzardCharacterResult { ApiFailed = true };
         }
     }
 
-    private static bool IsClassicCharacter(JsonElement character)
+    private static bool IsRetailCharacter(JsonElement character)
     {
-        // The Blizzard API returns game_version for Classic characters
-        // Exact field name may vary; fall back to checking realm namespace
+        // Exclude Classic characters (Classic Era, Anniversary, etc.)
         if (character.TryGetProperty("game_version", out var gv))
         {
             var type = gv.TryGetProperty("type", out var t) ? t.GetString() : null;
-            return type is "CLASSIC" or "CLASSIC_ERA";
+            return type is not ("CLASSIC" or "CLASSIC_ERA");
         }
 
-        // Fallback: check if realm slug contains "classic"
+        // Exclude if realm slug contains "classic"
         if (character.TryGetProperty("realm", out var realm) &&
             realm.TryGetProperty("slug", out var slug))
         {
-            return slug.GetString()?.Contains("classic", StringComparison.OrdinalIgnoreCase) == true;
+            return !slug.GetString()?.Contains("classic", StringComparison.OrdinalIgnoreCase) ?? true;
         }
 
-        return false;
+        // No game_version field → assume retail
+        return true;
     }
 }

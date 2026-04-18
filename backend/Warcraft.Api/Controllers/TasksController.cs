@@ -17,78 +17,126 @@ public class TasksController(AppDbContext db) : ControllerBase
         int.Parse(User.FindFirst("user_id")?.Value ?? "0");
 
     /// <summary>
-    /// Returns the full dashboard state for a character: raid lockouts, heroic dungeons,
-    /// profession CDs, gear slots — merged with the hardcoded task templates.
-    /// Template tasks not yet in the DB are returned as unchecked.
+    /// Full dashboard for a character: raids, M+ runs, weekly quests, profession CDs,
+    /// gear slots, and Great Vault progress — all merged with DB-managed templates.
     /// </summary>
     [HttpGet("dashboard/{characterId:int}")]
     public async Task<ActionResult<CharacterDashboardDto>> GetDashboard(int characterId)
     {
         var character = await db.Characters
             .FirstOrDefaultAsync(c => c.Id == characterId && c.UserId == CurrentUserId);
-
         if (character == null) return NotFound();
 
         var weekStart = ResetService.GetCurrentWeekStart(character.Region);
-        var dayStart = ResetService.GetCurrentDayStart();
 
-        // Load this period's checked tasks from DB
-        var weeklyChecked = await db.WeeklyTasks
-            .Where(t => t.CharacterId == characterId && t.WeekStart == weekStart)
-            .ToListAsync();
-
-        var dailyChecked = await db.DailyTasks
-            .Where(t => t.CharacterId == characterId && t.DayStart == dayStart)
-            .ToListAsync();
-
+        // EF Core DbContext is not thread-safe — queries must run sequentially.
+        var weeklyTasks = await db.WeeklyTasks
+            .Where(t => t.CharacterId == characterId && t.WeekStart == weekStart).ToListAsync();
+        var mpRuns = await db.MythicPlusRuns
+            .Where(r => r.CharacterId == characterId && r.WeekStart == weekStart)
+            .OrderBy(r => r.CompletedAt).ToListAsync();
         var profCds = await db.ProfessionCooldowns
-            .Where(t => t.CharacterId == characterId)
-            .ToListAsync();
-
+            .Where(t => t.CharacterId == characterId).ToListAsync();
         var gearSlots = await db.GearSlots
-            .Where(t => t.CharacterId == characterId)
-            .OrderBy(t => t.SlotName)
-            .ToListAsync();
+            .Where(t => t.CharacterId == characterId).OrderBy(t => t.SlotName).ToListAsync();
+        var raidTemplates = await db.RaidTemplates
+            .Where(t => t.IsActive).OrderBy(t => t.SortOrder).ToListAsync();
+        var questTemplates = await db.WeeklyQuestTemplates
+            .Where(t => t.IsActive).OrderBy(t => t.SortOrder).ToListAsync();
+        var profCdTemplates = await db.ProfessionCdTemplates
+            .Where(t => t.IsActive).OrderBy(t => t.SortOrder).ToListAsync();
 
-        // Merge template tasks with DB state
-        var raids = TaskTemplates.WeeklyRaids.Select(template =>
+        var raidDtos = raidTemplates.Select(t =>
         {
-            var dbRow = weeklyChecked.FirstOrDefault(t => t.TaskKey == template.Key);
-            return new TaskDto(template.Key, template.Name, template.Type,
-                dbRow?.CheckedAt != null, dbRow?.CheckedAt);
-        });
+            var row = weeklyTasks.FirstOrDefault(w => w.TaskKey == t.Key);
+            return new RaidDashboardDto(t.Key, t.Name, t.Difficulty, t.BossCount, row?.Count ?? 0);
+        }).ToList();
 
-        var heroics = TaskTemplates.HeroicDungeons.Select(template =>
+        var questDtos = questTemplates.Select(t =>
         {
-            var dbRow = dailyChecked.FirstOrDefault(t => t.TaskKey == template.Key);
-            return new TaskDto(template.Key, template.Name, template.Type,
-                dbRow?.CheckedAt != null, dbRow?.CheckedAt);
-        });
+            var row = weeklyTasks.FirstOrDefault(w => w.TaskKey == t.Key);
+            return new TaskDto(t.Key, t.Name, t.QuestType, row?.CheckedAt != null, row?.CheckedAt);
+        }).ToList();
 
-        var profCdDtos = TaskTemplates.ProfessionCooldowns.Select(template =>
+        var mpRunDtos = mpRuns
+            .Select(r => new MythicPlusRunDto(r.Id, r.DungeonKey, r.DungeonName, r.KeyLevel, r.CompletedAt))
+            .ToList();
+
+        int totalRaidBosses = raidDtos.Sum(r => r.BossesKilled);
+        bool delvesDone = weeklyTasks.Any(t => t.TaskKey == "delves_weekly" && t.CheckedAt != null);
+        var vault = VaultService.Compute(mpRuns.Count, totalRaidBosses, delvesDone);
+
+        var profCdDtos = profCdTemplates.Select(t =>
         {
-            var dbRow = profCds.FirstOrDefault(t => t.CdKey == template.Key);
-            var isReady = ResetService.IsProfessionCdReady(dbRow?.LastUsedAt, template.PeriodDays);
-            var readyAt = ResetService.GetProfessionCdReadyAt(dbRow?.LastUsedAt, template.PeriodDays);
-            return new ProfessionCdDto(template.Key, template.Name, template.PeriodDays,
-                isReady, dbRow?.LastUsedAt, readyAt);
+            var row = profCds.FirstOrDefault(p => p.CdKey == t.Key);
+            return new ProfessionCdDto(t.Key, t.Name, t.PeriodDays,
+                ResetService.IsProfessionCdReady(row?.LastUsedAt, t.PeriodDays),
+                row?.LastUsedAt,
+                ResetService.GetProfessionCdReadyAt(row?.LastUsedAt, t.PeriodDays));
         });
 
         var gearSlotDtos = gearSlots.Select(g =>
-            new GearSlotDto(g.Id, g.SlotName, g.CurrentItem, g.BisItem, g.BisSource, g.IsComplete));
+            new GearSlotDto(g.Id, g.SlotName, g.CurrentItem, g.ItemLevel, g.Source,
+                g.BisItem, g.BisSource, g.IsComplete));
 
-        var pendingTaskCount = raids.Count(t => !t.IsChecked) + heroics.Count(t => !t.IsChecked);
-        var pendingGearCount = gearSlots.Count(g => !g.IsComplete);
+        int pendingTaskCount = raidDtos.Count(r => r.BossesKilled == 0) + questDtos.Count(q => !q.IsChecked);
+        int pendingGearCount = gearSlots.Count(g => !g.IsComplete);
 
         return Ok(new CharacterDashboardDto(
             character.Id, character.Name, character.Realm, character.Class,
             character.Level, character.Role, character.IsMain, character.Region,
-            character.AvatarUrl, character.Spec,
-            raids, heroics, profCdDtos, gearSlotDtos,
+            character.AvatarUrl, character.Spec, character.ItemLevelAverage,
+            raidDtos, mpRunDtos, questDtos, profCdDtos, gearSlotDtos, vault,
             pendingTaskCount, pendingGearCount));
     }
 
-    /// <summary>Check or uncheck a weekly task. Inserts a DB row on first check (lazy insert).</summary>
+    /// <summary>Set boss kill count for a raid lockout. BossesKilled = 0 clears the row.</summary>
+    [HttpPost("raid/{characterId:int}/{taskKey}")]
+    public async Task<IActionResult> SetRaidProgress(
+        int characterId, string taskKey, [FromBody] SetRaidProgressDto dto)
+    {
+        var character = await db.Characters
+            .FirstOrDefaultAsync(c => c.Id == characterId && c.UserId == CurrentUserId);
+        if (character == null) return NotFound();
+
+        var template = await db.RaidTemplates
+            .FirstOrDefaultAsync(t => t.Key == taskKey && t.IsActive);
+        if (template == null) return BadRequest(new { error = "Unknown raid key" });
+
+        if (dto.BossesKilled < 0 || dto.BossesKilled > template.BossCount)
+            return BadRequest(new { error = $"BossesKilled must be 0–{template.BossCount}" });
+
+        var weekStart = ResetService.GetCurrentWeekStart(character.Region);
+        var existing = await db.WeeklyTasks.FirstOrDefaultAsync(t =>
+            t.CharacterId == characterId && t.TaskKey == taskKey && t.WeekStart == weekStart);
+
+        if (dto.BossesKilled == 0)
+        {
+            if (existing != null) db.WeeklyTasks.Remove(existing);
+        }
+        else
+        {
+            if (existing == null)
+            {
+                existing = new WeeklyTask
+                {
+                    CharacterId = characterId,
+                    TaskKey = taskKey,
+                    TaskName = template.Name,
+                    TaskType = "RAID",
+                    WeekStart = weekStart,
+                };
+                db.WeeklyTasks.Add(existing);
+            }
+            existing.Count = dto.BossesKilled;
+            existing.CheckedAt = dto.BossesKilled >= template.BossCount ? DateTime.UtcNow : null;
+        }
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    /// <summary>Check or uncheck a weekly quest (world boss, faction weekly, delves, etc.).</summary>
     [HttpPost("weekly/{characterId:int}/{taskKey}")]
     public async Task<IActionResult> CheckWeeklyTask(
         int characterId, string taskKey, [FromBody] CheckTaskDto dto)
@@ -97,11 +145,11 @@ public class TasksController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(c => c.Id == characterId && c.UserId == CurrentUserId);
         if (character == null) return NotFound();
 
-        var template = TaskTemplates.WeeklyRaids.FirstOrDefault(t => t.Key == taskKey);
-        if (template == null) return BadRequest(new { error = "Unknown task key" });
+        var template = await db.WeeklyQuestTemplates
+            .FirstOrDefaultAsync(t => t.Key == taskKey && t.IsActive);
+        if (template == null) return BadRequest(new { error = "Unknown weekly quest key" });
 
         var weekStart = ResetService.GetCurrentWeekStart(character.Region);
-
         var existing = await db.WeeklyTasks.FirstOrDefaultAsync(t =>
             t.CharacterId == characterId && t.TaskKey == taskKey && t.WeekStart == weekStart);
 
@@ -112,46 +160,11 @@ public class TasksController(AppDbContext db) : ControllerBase
                 CharacterId = characterId,
                 TaskKey = taskKey,
                 TaskName = template.Name,
-                TaskType = template.Type,
+                TaskType = template.QuestType,
                 WeekStart = weekStart,
             };
             db.WeeklyTasks.Add(existing);
         }
-
-        existing.CheckedAt = dto.IsChecked ? DateTime.UtcNow : null;
-        await db.SaveChangesAsync();
-        return NoContent();
-    }
-
-    /// <summary>Check or uncheck a heroic daily task.</summary>
-    [HttpPost("daily/{characterId:int}/{taskKey}")]
-    public async Task<IActionResult> CheckDailyTask(
-        int characterId, string taskKey, [FromBody] CheckTaskDto dto)
-    {
-        var character = await db.Characters
-            .FirstOrDefaultAsync(c => c.Id == characterId && c.UserId == CurrentUserId);
-        if (character == null) return NotFound();
-
-        var template = TaskTemplates.HeroicDungeons.FirstOrDefault(t => t.Key == taskKey);
-        if (template == null) return BadRequest(new { error = "Unknown task key" });
-
-        var dayStart = ResetService.GetCurrentDayStart();
-
-        var existing = await db.DailyTasks.FirstOrDefaultAsync(t =>
-            t.CharacterId == characterId && t.TaskKey == taskKey && t.DayStart == dayStart);
-
-        if (existing == null)
-        {
-            existing = new DailyTask
-            {
-                CharacterId = characterId,
-                TaskKey = taskKey,
-                TaskName = template.Name,
-                DayStart = dayStart,
-            };
-            db.DailyTasks.Add(existing);
-        }
-
         existing.CheckedAt = dto.IsChecked ? DateTime.UtcNow : null;
         await db.SaveChangesAsync();
         return NoContent();
@@ -166,7 +179,8 @@ public class TasksController(AppDbContext db) : ControllerBase
             .FirstOrDefaultAsync(c => c.Id == characterId && c.UserId == CurrentUserId);
         if (character == null) return NotFound();
 
-        var template = TaskTemplates.ProfessionCooldowns.FirstOrDefault(t => t.Key == cdKey);
+        var template = await db.ProfessionCdTemplates
+            .FirstOrDefaultAsync(t => t.Key == cdKey && t.IsActive);
         if (template == null) return BadRequest(new { error = "Unknown CD key" });
 
         var existing = await db.ProfessionCooldowns
@@ -183,7 +197,6 @@ public class TasksController(AppDbContext db) : ControllerBase
             };
             db.ProfessionCooldowns.Add(existing);
         }
-
         existing.LastUsedAt = dto.Used ? DateTime.UtcNow : null;
         await db.SaveChangesAsync();
         return NoContent();

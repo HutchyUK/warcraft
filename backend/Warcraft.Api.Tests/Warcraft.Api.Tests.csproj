@@ -12,6 +12,14 @@
     <ProjectReference Include="..\Warcraft.Api\Warcraft.Api.csproj" />
   </ItemGroup>
 
+  <!-- Copy content.json from main project so ContentSeeder finds it in test output -->
+  <ItemGroup>
+    <Content Include="..\Warcraft.Api\content.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Link>content.json</Link>
+    </Content>
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
