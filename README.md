@@ -17,10 +17,11 @@ cd frontend && npm run dev
 
 ## Project structure
 
-- `backend/Warcraft.Api/` — ASP.NET Core Web API (.NET 9)
-- `frontend/` — Next.js 14 App Router + Tailwind CSS
+- `backend/Warcraft.Api/` — ASP.NET Core Web API (.NET 10)
+- `frontend/` — Next.js App Router + Tailwind CSS
 - `DESIGN.md` — Full design doc (problem statement, data model, phases)
 - `SETUP.md` — Local development setup guide
+- `docs/adr/` — Architecture Decision Records
 
 ## Stack
 
