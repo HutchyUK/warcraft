@@ -26,12 +26,12 @@ services:
       db:
         condition: service_healthy
     environment:
-      ConnectionStrings__DefaultConnection: postgresql://neondb_owner:npg_iP56ZKptUuLH@ep-calm-feather-ab5l9bc1.eu-west-2.aws.neon.tech/neondb?sslmode=require Host=db;Port=5432;Database=warcraft;Username=warcraft;Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__DefaultConnection: Host=ep-calm-feather-ab5l9bc1.eu-west-2.aws.neon.tech;Database=neondb;Username=neondb_owner;Password=npg_iP56ZKptUuLH;SSL Mode=Require
       Blizzard__ClientId: 2c73def139ce4e04a19cee6229f83370
       Blizzard__ClientSecret: MDlWIwfKwzXFPK4p5dcCm4HurxsgOGMU
       Blizzard__RedirectUri: https://warcraft.railway.app/api/auth/callback
       FrontendUrl: https://warcraft-pi.vercel.app
-      Cors__AllowedOrigins__0: ${FRONTEND_URL:-http://localhost:3000}
+      Cors__AllowedOrigins__0: https://warcraft-pi.vercel.app
       ASPNETCORE_ENVIRONMENT: Production
     ports:
       - "8080:8080"
