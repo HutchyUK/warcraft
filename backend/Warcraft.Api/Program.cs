@@ -13,6 +13,15 @@ var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
 var frontendUrl = config["FrontendUrl"] ?? "/";
 
+// Trust Railway's reverse proxy so the app sees https:// not http://
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                             | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 // Database — try config first, fall back to DATABASE_URL env var (Railway default)
 var connectionString = config.GetConnectionString("DefaultConnection");
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -165,6 +174,7 @@ builder.WebHost.UseUrls($"http://+:{listenPort}");
 
 var app = builder.Build();
 
+app.UseForwardedHeaders();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
