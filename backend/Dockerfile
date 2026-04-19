@@ -16,7 +16,7 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
 # Non-root user for security
-RUN adduser --disabled-password --gecos "" appuser && chown -R appuser /app
+RUN useradd -r -s /bin/false appuser && chown -R appuser /app
 USER appuser
 
 COPY --from=build --chown=appuser /app/publish .
