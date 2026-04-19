@@ -1,4 +1,6 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:5000';
+// In production, use relative paths so requests go through the Vercel proxy (avoids third-party cookie blocking).
+// In local dev, fall back to localhost:5000.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
