@@ -10,12 +10,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U warcraft -d warcraft"]
+      test: [ "CMD-SHELL", "pg_isready -U warcraft -d warcraft" ]
       interval: 5s
       timeout: 5s
       retries: 10
     ports:
-      - "5432:5432"   # expose for local inspection; remove in prod
+      - "5432:5432" # expose for local inspection; remove in prod
 
   api:
     build:
@@ -26,12 +26,11 @@ services:
       db:
         condition: service_healthy
     environment:
-      ConnectionStrings__DefaultConnection: >-
-        Host=db;Port=5432;Database=warcraft;Username=warcraft;Password=${POSTGRES_PASSWORD}
-      Blizzard__ClientId: ${BLIZZARD_CLIENT_ID:?BLIZZARD_CLIENT_ID is required}
-      Blizzard__ClientSecret: ${BLIZZARD_CLIENT_SECRET:?BLIZZARD_CLIENT_SECRET is required}
-      Blizzard__RedirectUri: ${BLIZZARD_REDIRECT_URI:-http://localhost:8080/api/auth/callback}
-      FrontendUrl: ${FRONTEND_URL:-http://localhost:3000}
+      ConnectionStrings__DefaultConnection: postgresql://neondb_owner:npg_iP56ZKptUuLH@ep-calm-feather-ab5l9bc1.eu-west-2.aws.neon.tech/neondb?sslmode=require Host=db;Port=5432;Database=warcraft;Username=warcraft;Password=${POSTGRES_PASSWORD}
+      Blizzard__ClientId: 2c73def139ce4e04a19cee6229f83370
+      Blizzard__ClientSecret: MDlWIwfKwzXFPK4p5dcCm4HurxsgOGMU
+      Blizzard__RedirectUri: https://warcraft.railway.app/api/auth/callback
+      FrontendUrl: https://warcraft-pi.vercel.app
       Cors__AllowedOrigins__0: ${FRONTEND_URL:-http://localhost:3000}
       ASPNETCORE_ENVIRONMENT: Production
     ports:

@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet build:*)",
+      "Bash(dotnet ef:*)",
+      "Bash(dotnet test:*)",
+      "Bash(powershell -Command 'Get-Process | Where-Object { $_.Name -like '\\\\''*Docker*'\\\\'' -or $_.Name -like '\\\\''*docker*'\\\\'' } | Select-Object Name,Id')",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)",
+      "Bash(git commit -m ':*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m 'fix\\(docker\\): use useradd instead of adduser for Debian runtime image:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}
