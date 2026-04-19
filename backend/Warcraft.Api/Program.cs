@@ -160,8 +160,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddControllers();
 
 // Respect Railway's PORT env var
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://+:{port}");
+var listenPort = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://+:{listenPort}");
 
 var app = builder.Build();
 
