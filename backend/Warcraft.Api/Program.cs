@@ -13,9 +13,26 @@ var builder = WebApplication.CreateBuilder(args);
 var config = builder.Configuration;
 var frontendUrl = config["FrontendUrl"] ?? "/";
 
-// Database
+// Database — try config first, fall back to DATABASE_URL env var (Railway default)
+var connectionString = config.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+    if (!string.IsNullOrWhiteSpace(databaseUrl))
+    {
+        // Convert postgresql://user:pass@host/db?sslmode=require to Npgsql format
+        var uri = new Uri(databaseUrl);
+        var userInfo = uri.UserInfo.Split(':');
+        connectionString =
+            $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')}" +
+            $";Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require";
+    }
+}
+
+Console.WriteLine($"[Startup] Connection string present: {!string.IsNullOrWhiteSpace(connectionString)}");
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(config.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // HTTP client factory (for BlizzardApiService)
 builder.Services.AddHttpClient();
