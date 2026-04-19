@@ -15,6 +15,9 @@ RUN dotnet publish Warcraft.Api/Warcraft.Api.csproj \
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 
+# Install Kerberos libs required by Npgsql channel binding
+RUN apt-get update && apt-get install -y --no-install-recommends libgssapi-krb5-2 && rm -rf /var/lib/apt/lists/*
+
 # Non-root user for security
 RUN useradd -r -s /bin/false appuser && chown -R appuser /app
 USER appuser
